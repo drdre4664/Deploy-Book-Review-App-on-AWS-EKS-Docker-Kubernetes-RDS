@@ -2,48 +2,62 @@
 
 A full-stack book review application deployed as a 3-tier architecture on AWS using EKS (Kubernetes), RDS MySQL, and Docker Hub.
 
+---
+
 ## Architecture
 
 ```
-Internet
-   │
-   ▼
-[AWS LoadBalancer] ──► Frontend Pod (Next.js)  ← EKS
-                              │
-                    (HTTP to public LoadBalancer)
-                              ▼
-                    [AWS LoadBalancer] ──► Backend Pod (Node.js)  ← EKS
-                                                   │
-                                                   ▼
-                                          AWS RDS MySQL
+                  Internet
+                     │
+                     ▼
+           [AWS LoadBalancer]
+                     │
+                     ▼
+           Frontend Pod (Next.js)         <-- EKS
+                     │
+        (HTTP to public LoadBalancer)
+                     │
+                     ▼
+           [AWS LoadBalancer]
+                     │
+                     ▼
+           Backend Pod (Node.js)          <-- EKS
+                     │
+                     ▼
+              AWS RDS MySQL
 ```
 
-| Tier     | Technology      | Hosting          |
-|----------|----------------|------------------|
-| Frontend | Next.js (React) | EKS (Kubernetes) |
-| Backend  | Node.js/Express | EKS (Kubernetes) |
-| Database | MySQL           | AWS RDS          |
+| Tier      | Technology         | Hosting               |
+|-----------|--------------------|-----------------------|
+| Frontend  | Next.js (React)    | EKS (Kubernetes)      |
+| Backend   | Node.js / Express  | EKS (Kubernetes)      |
+| Database  | MySQL              | AWS RDS               |
+
+---
 
 ## Features
+
 - Browse books
 - User registration and login (JWT auth)
 - Submit and view book reviews
 
 ## Tech Stack
-- **Frontend**: Next.js, React, Tailwind CSS
-- **Backend**: Node.js, Express, Sequelize ORM
-- **Database**: MySQL (AWS RDS)
-- **Containerization**: Docker (multi-stage builds, linux/amd64)
-- **Orchestration**: Kubernetes (AWS EKS via eksctl)
-- **Image Registry**: Docker Hub
+
+- **Frontend:** Next.js, React, Tailwind CSS
+- **Backend:** Node.js, Express, Sequelize ORM
+- **Database:** MySQL (AWS RDS)
+- **Containerization:** Docker (multi-stage builds, `linux/amd64`)
+- **Orchestration:** Kubernetes (AWS EKS via `eksctl`)
+- **Image Registry:** Docker Hub
 
 ---
 
 ## Project Structure
 
 ```
+.
 ├── backend/
-│   ├── Dockerfile              # Multi-stage production build
+│   ├── Dockerfile                  # Multi-stage production build
 │   ├── .dockerignore
 │   └── src/
 │       ├── server.js
@@ -51,33 +65,37 @@ Internet
 │       ├── models/
 │       ├── controllers/
 │       └── routes/
+│
 ├── frontend/
-│   ├── Dockerfile              # Multi-stage production build
+│   ├── Dockerfile                  # Multi-stage production build
 │   ├── .dockerignore
 │   └── src/app/
-│       ├── page.js             # Books listing
+│       ├── page.js                 # Books listing
 │       ├── login/
 │       ├── register/
-│       └── book/[id]/          # Book detail + reviews
+│       └── book/[id]/              # Book detail + reviews
+│
 ├── k8s/
 │   ├── backend/
-│   │   ├── configmap.yaml      # DB config, port, CORS origins
-│   │   ├── secret.yaml.example # Template — copy to secret.yaml and fill values
-│   │   ├── deployment.yaml     # 2 replicas, health probes
-│   │   └── service.yaml        # LoadBalancer (public)
+│   │   ├── configmap.yaml          # DB config, port, CORS origins
+│   │   ├── secret.yaml.example     # Template — copy to secret.yaml and fill values
+│   │   ├── deployment.yaml         # 2 replicas, health probes
+│   │   └── service.yaml            # LoadBalancer (public)
 │   └── frontend/
-│       ├── configmap.yaml      # NEXT_PUBLIC_API_URL
-│       ├── deployment.yaml     # 2 replicas, health probes
-│       └── service.yaml        # LoadBalancer (public, port 80)
-└── docker-compose.yml          # Local development
+│       ├── configmap.yaml          # NEXT_PUBLIC_API_URL
+│       ├── deployment.yaml         # 2 replicas, health probes
+│       └── service.yaml            # LoadBalancer (public, port 80)
+│
+└── docker-compose.yml              # Local development
 ```
 
 ---
 
 ## Prerequisites
+
 - AWS CLI configured
-- eksctl installed
-- kubectl installed
+- `eksctl` installed
+- `kubectl` installed
 - Docker with buildx support
 - Docker Hub account
 
@@ -86,11 +104,12 @@ Internet
 ## Deployment Steps
 
 ### 1. Create AWS RDS MySQL
-1. AWS Console → RDS → Create database → MySQL → Free tier
-2. Set a strong master password
-3. Connectivity: set **Public access = Yes**
-4. Add inbound rule to RDS security group: MySQL 3306 from 0.0.0.0/0
-5. Note the endpoint after creation
+
+- AWS Console → RDS → Create database → MySQL → Free tier
+- Set a strong master password
+- Connectivity: set **Public access = Yes**
+- Add inbound rule to RDS security group: MySQL 3306 from `0.0.0.0/0`
+- Note the endpoint after creation
 
 ### 2. Create EKS Cluster
 
@@ -109,13 +128,14 @@ eksctl create cluster \
 ```
 
 Verify nodes are ready:
+
 ```bash
 kubectl get nodes
 ```
 
 ### 3. Build and Push Docker Images
 
-> Mac users (Apple Silicon): EKS runs linux/amd64 — you must cross-compile.
+> Mac users (Apple Silicon): EKS runs `linux/amd64` — you must cross-compile.
 
 ```bash
 # Backend
@@ -152,6 +172,7 @@ kubectl apply -f k8s/frontend/service.yaml
 ```
 
 ### 5. Access the App
+
 ```bash
 kubectl get svc frontend-service
 # Open EXTERNAL-IP in your browser
@@ -162,19 +183,19 @@ kubectl get svc frontend-service
 ## Key Lessons Learned
 
 | Problem | Root Cause | Fix |
-|---------|-----------|-----|
-| ImagePullBackOff | Built on Mac ARM64, EKS needs AMD64 | docker buildx build --platform linux/amd64 |
-| Books not loading | NEXT_PUBLIC_API_URL was internal cluster DNS — doesn't work in browser | Rebuild frontend image with public backend LoadBalancer URL |
-| CORS blocked | Backend ALLOWED_ORIGINS missing frontend's public URL | Update ConfigMap with frontend LoadBalancer URL |
-| Pods stuck Pending | t3.micro nodes max ~4 pods (system pods take slots) | Set replicas: 1 or use larger node type |
-| NodeCreationFailure | Nodes from AWS Console can't join — missing aws-auth ConfigMap | Use eksctl create nodegroup instead |
+|---|---|---|
+| ImagePullBackOff | Built on Mac ARM64, EKS needs AMD64 | `docker buildx build --platform linux/amd64` |
+| Books not loading | `NEXT_PUBLIC_API_URL` was internal cluster DNS — doesn't work in browser | Rebuild frontend image with public backend LoadBalancer URL |
+| CORS blocked | Backend `ALLOWED_ORIGINS` missing frontend's public URL | Update ConfigMap with frontend LoadBalancer URL |
+| Pods stuck Pending | `t3.micro` nodes max ~4 pods (system pods take slots) | Set `replicas: 1` or use larger node type |
+| NodeCreationFailure | Nodes from AWS Console can't join — missing aws-auth ConfigMap | Use `eksctl create nodegroup` instead |
 | RDS unreachable from EKS | RDS in default VPC, EKS in its own VPC | Make RDS publicly accessible |
 
 ---
 
 ## Docker Images
 
-| Image | Tag | Description |
-|-------|-----|-------------|
-| dre4664/book-review-backend | v1 | Node.js Express API (linux/amd64) |
-| dre4664/book-review-frontend | v2 | Next.js with backend URL baked in (linux/amd64) |
+| Image                              | Tag | Description                                     |
+|------------------------------------|-----|-------------------------------------------------|
+| `dre4664/book-review-backend`     | v1  | Node.js Express API (linux/amd64)               |
+| `dre4664/book-review-frontend`    | v2  | Next.js with backend URL baked in (linux/amd64) |
